@@ -32,6 +32,7 @@ chrome.webRequest.onHeadersReceived.addListener(
           videoCandidates[videoUrl] = contentLength;
         }
 
+        // select the video with the bigger file size (which probably makes it the best video quality)
         const bestVideoUrl = Object.entries(videoCandidates).reduce(
           (best, [url, length]) =>
             length > (videoCandidates[best] || 0) ? url : best,
@@ -40,6 +41,7 @@ chrome.webRequest.onHeadersReceived.addListener(
 
         if (bestVideoUrl) {
           console.log(`Video URL: ${bestVideoUrl}`);
+          chrome.storage.local.set({ videoUrl: bestVideoUrl });
         }
       }
     });
