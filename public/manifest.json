@@ -3,8 +3,8 @@
   "name": "AP Video Downloader",
   "version": "0.0.0",
   "description": "Downloads AP Daily videos",
-  "permissions": ["webRequest", "tabs", "storage"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": ["webRequest", "webNavigation", "tabs", "storage"],
+  "host_permissions": ["https://embed-cloudfront.wistia.com/*"],
   "background": {
     "service_worker": "background.js"
   },
