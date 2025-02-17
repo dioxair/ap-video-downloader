@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "description": "Downloads AP Daily videos",
   "permissions": ["webRequest", "webNavigation", "tabs", "storage"],
-  "host_permissions": ["https://embed-cloudfront.wistia.com/*"],
+  "host_permissions": [
+    "https://*.collegeboard.org/*",
+    "https://embed-cloudfront.wistia.com/*"
+  ],
   "background": {
     "service_worker": "background.js"
   },
