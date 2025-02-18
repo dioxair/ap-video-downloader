@@ -1,124 +1,132 @@
-const downloadButton = document.getElementById(
-  "downloadVideoButton",
-) as HTMLButtonElement;
-const downloadSubtitlesButton = document.getElementById(
-  "downloadSubsButton",
-) as HTMLButtonElement;
-const openTabButton = document.getElementById(
-  "openVideoInTabButton",
-) as HTMLButtonElement;
+// sorry to whoever's reading this code for getting carried away and overengineering this whole thing lol
 
-function isOriginalAsset(asset: { type: string }) {
-  if (asset.type === "original") return true;
-}
+class VideoService {
+  constructor(private baseUrl: string) {}
 
-async function getVideoUrl(currentUrl: string): Promise<string | null> {
-  const videoID = getVideoID(currentUrl);
-  const infoUrl = `https://fast.wistia.com/embed/medias/${videoID}.json`;
+  async getVideoUrl(videoID: string): Promise<string | null> {
+    const infoUrl = `${this.baseUrl}/embed/medias/${videoID}.json`;
+    try {
+      const response = await fetch(infoUrl);
+      if (!response.ok)
+        throw new Error(
+          `Received non-ok status code ${response.status} from ${infoUrl}`,
+        );
 
-  try {
-    const response = await fetch(infoUrl);
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
+      const data = await response.json();
+      const videoAsset = data?.media?.assets?.find(
+        (asset: { type: string }) => asset.type === "original",
+      );
 
-    const data = await response.json();
-
-    const videoAsset = data?.media?.assets?.find(isOriginalAsset);
-
-    if (videoAsset) {
-      // silly replace but i dont think this raises any problems
-      return videoAsset.url.replace("bin", "mp4");
-    } else {
+      // silly replace but its probably ok who cares yk
+      return videoAsset ? videoAsset.url.replace("bin", "mp4") : null;
+    } catch (error) {
+      console.error("Error fetching video URL:", error);
       return null;
     }
-  } catch (error) {
-    console.error("Error fetching or processing the JSON:", error);
-    return null;
+  }
+
+  getSubtitlesUrl(videoID: string): string {
+    return `${this.baseUrl}/embed/captions/${videoID}.vtt?language=eng`;
   }
 }
 
-async function getCurrentUrl(): Promise<string | null> {
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    lastFocusedWindow: true,
-  });
-  if (tab.url === undefined) return null;
-  return tab.url;
-}
-
-function getVideoID(url: string): string | null {
-  return new URLSearchParams(new URL(url).search).get("apd");
-}
-
-async function checkIfClassroomTab(): Promise<boolean> {
-  const currentUrl = await getCurrentUrl();
-  if (currentUrl === null) throw new Error("Current tab URL is null.");
-
-  if (!getVideoID(currentUrl)) {
-    alert("Please navigate to an AP Classroom video.");
-    return false;
-  }
-
-  return true;
-}
-
-async function downloadFile(url: string, filename: string) {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(link.href);
-}
-
-function getSubtitlesUrl(url: string): string | null {
-  const videoID = getVideoID(url);
-
-  if (videoID) {
-    return `https://fast.wistia.net/embed/captions/${videoID}.vtt?language=eng`;
-  } else {
-    return null;
+class TabService {
+  async getCurrentUrl(): Promise<string | null> {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      lastFocusedWindow: true,
+    });
+    return tab.url ?? null;
   }
 }
 
-downloadButton.addEventListener("click", async () => {
-  const currentUrl = await getCurrentUrl();
-  if (currentUrl === null) throw new Error("Current tab URL is null.");
-  if (!(await checkIfClassroomTab())) return;
-
-  getVideoUrl(currentUrl).then(async (url) => {
-    if (url === null)
-      throw new Error("URL in getVideoUrl from downloadButton is null.");
-    // TODO: Use name in metadata for file names
-    await downloadFile(url, "video.mp4");
-  });
-});
-
-downloadSubtitlesButton.addEventListener("click", async () => {
-  const currentUrl = await getCurrentUrl();
-  if (currentUrl === null) throw new Error("Current tab URL is null.");
-  if (!(await checkIfClassroomTab())) return;
-
-  const subtitlesUrl = getSubtitlesUrl(currentUrl);
-  if (subtitlesUrl !== null) {
-    await downloadFile(subtitlesUrl, "subtitles.vtt");
-  } else if (subtitlesUrl === null) {
-    throw new Error("subtitlesUrl is null.");
+class DownloadService {
+  async downloadFile(url: string, filename: string): Promise<void> {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
   }
-});
+}
 
-openTabButton.addEventListener("click", async () => {
-  const currentUrl = await getCurrentUrl();
-  if (currentUrl === null) throw new Error("Current tab URL is null.");
-  if (!(await checkIfClassroomTab())) return;
+class VideoDownloader {
+  constructor(
+    private videoService: VideoService,
+    private tabService: TabService,
+    private downloadService: DownloadService,
+  ) {
+    this.initEventListeners();
+  }
 
-  getVideoUrl(currentUrl).then(async (url) => {
-    if (url === null)
-      throw new Error("URL in getVideoUrl from openTabButton is null.");
-    chrome.tabs.create({ url: url });
-  });
-});
+  private async handleDownloadVideo(): Promise<void> {
+    const currentUrl = await this.tabService.getCurrentUrl();
+    if (!currentUrl || !this.isValidClassroomTab(currentUrl)) return;
+
+    const videoID = this.getVideoID(currentUrl);
+    if (!videoID) return;
+
+    const videoUrl = await this.videoService.getVideoUrl(videoID);
+    if (!videoUrl) throw new Error("Video URL is null.");
+
+    await this.downloadService.downloadFile(videoUrl, "video.mp4");
+  }
+
+  private async handleDownloadSubtitles(): Promise<void> {
+    const currentUrl = await this.tabService.getCurrentUrl();
+    if (!currentUrl || !this.isValidClassroomTab(currentUrl)) return;
+
+    const videoID = this.getVideoID(currentUrl);
+    if (!videoID) return;
+
+    const subtitlesUrl = this.videoService.getSubtitlesUrl(videoID);
+    await this.downloadService.downloadFile(subtitlesUrl, "subtitles.vtt");
+  }
+
+  private async handleOpenTab(): Promise<void> {
+    const currentUrl = await this.tabService.getCurrentUrl();
+    if (!currentUrl || !this.isValidClassroomTab(currentUrl)) return;
+
+    const videoID = this.getVideoID(currentUrl);
+    if (!videoID) return;
+
+    const videoUrl = await this.videoService.getVideoUrl(videoID);
+    if (!videoUrl) throw new Error("Video URL is null.");
+
+    chrome.tabs.create({ url: videoUrl });
+  }
+
+  private getVideoID(url: string): string | null {
+    return new URLSearchParams(new URL(url).search).get("apd");
+  }
+
+  private isValidClassroomTab(url: string): boolean {
+    const videoID = this.getVideoID(url);
+    if (!videoID) {
+      alert("Please navigate to an AP Classroom video.");
+      return false;
+    }
+    return true;
+  }
+
+  private initEventListeners(): void {
+    document
+      .getElementById("downloadVideoButton")
+      ?.addEventListener("click", () => this.handleDownloadVideo());
+    document
+      .getElementById("downloadSubsButton")
+      ?.addEventListener("click", () => this.handleDownloadSubtitles());
+    document
+      .getElementById("openVideoInTabButton")
+      ?.addEventListener("click", () => this.handleOpenTab());
+  }
+}
+
+const videoService = new VideoService("https://fast.wistia.com");
+const tabService = new TabService();
+const downloadService = new DownloadService();
+new VideoDownloader(videoService, tabService, downloadService);
