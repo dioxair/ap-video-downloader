@@ -25,8 +25,39 @@ class VideoService {
     }
   }
 
+  async getVideoName(videoID: string): Promise<string | null> {
+    const infoUrl = `${this.baseUrl}/embed/medias/${videoID}.json`;
+    try {
+      const response = await fetch(infoUrl);
+      if (!response.ok)
+        throw new Error(
+          `Received non-ok status code ${response.status} from ${infoUrl}`,
+        );
+
+      const data = await response.json();
+      const videoName = data?.media?.name;
+
+      return videoName ? this.sanitizeFilename(videoName) : null;
+    } catch (error) {
+      console.error("Error fetching video URL:", error);
+      return null;
+    }
+  }
+
   getSubtitlesUrl(videoID: string): string {
     return `${this.baseUrl}/embed/captions/${videoID}.vtt?language=eng`;
+  }
+
+  // regex rules from https://stackoverflow.com/a/31976060
+  sanitizeFilename(filename: string): string {
+    filename = filename
+      .replace(/[<>:"\/\\|?*\x00-\x1F]/g, "")
+      .replace(/[ .]+$/, "");
+    return /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i.test(filename) ||
+      filename === "." ||
+      filename === ".."
+      ? `_invalid_${filename}`
+      : filename;
   }
 }
 
@@ -73,7 +104,10 @@ class VideoDownloader {
     const videoUrl = await this.videoService.getVideoUrl(videoID);
     if (!videoUrl) throw new Error("Video URL is null.");
 
-    await this.downloadService.downloadFile(videoUrl, "video.mp4");
+    const videoName = await this.videoService.getVideoName(videoID);
+    if (!videoName) throw new Error("Video name is null");
+
+    await this.downloadService.downloadFile(videoUrl, `${videoName}.mp4`);
   }
 
   private async handleDownloadSubtitles(): Promise<void> {
@@ -83,8 +117,14 @@ class VideoDownloader {
     const videoID = this.getVideoID(currentUrl);
     if (!videoID) return;
 
+    const videoName = await this.videoService.getVideoName(videoID);
+    if (!videoName) throw new Error("Video name is null");
+
     const subtitlesUrl = this.videoService.getSubtitlesUrl(videoID);
-    await this.downloadService.downloadFile(subtitlesUrl, "subtitles.vtt");
+    await this.downloadService.downloadFile(
+      subtitlesUrl,
+      `${videoName} Subtitles.vtt`,
+    );
   }
 
   private async handleOpenTab(): Promise<void> {
