@@ -5,7 +5,6 @@ export default defineConfig({
     outDir: "dist",
     rollupOptions: {
       input: {
-        background: "src/background.ts",
         popup: "src/popup.ts",
       },
       output: {

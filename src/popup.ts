@@ -7,20 +7,35 @@ const downloadSubtitlesButton = document.getElementById(
 const openTabButton = document.getElementById(
   "openVideoInTabButton",
 ) as HTMLButtonElement;
-const toggleButton = document.getElementById(
-  "toggleMonitoringButton",
-) as HTMLButtonElement;
 
-function getVideoUrl(callback: (url: string | null) => void) {
-  chrome.storage.local.get("videoUrl", (data) => {
-    callback(data.videoUrl || null);
-  });
+function isOriginalAsset(asset: { type: string }) {
+  if (asset.type === "original") return true;
 }
 
-function getMonitoringState(callback: (url: string | null) => void) {
-  chrome.storage.local.get("monitoring", (data) => {
-    callback(data.monitoring || null);
-  });
+async function getVideoUrl(currentUrl: string): Promise<string | null> {
+  const videoID = getVideoID(currentUrl);
+  const infoUrl = `https://fast.wistia.com/embed/medias/${videoID}.json`;
+
+  try {
+    const response = await fetch(infoUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    const videoAsset = data?.media?.assets?.find(isOriginalAsset);
+
+    if (videoAsset) {
+      // silly replace but i dont think this raises any problems
+      return videoAsset.url.replace("bin", "mp4");
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching or processing the JSON:", error);
+    return null;
+  }
 }
 
 async function getCurrentUrl(): Promise<string | null> {
@@ -34,6 +49,18 @@ async function getCurrentUrl(): Promise<string | null> {
 
 function getVideoID(url: string): string | null {
   return new URLSearchParams(new URL(url).search).get("apd");
+}
+
+async function checkIfClassroomTab(): Promise<boolean> {
+  const currentUrl = await getCurrentUrl();
+  if (currentUrl === null) throw new Error("Current tab URL is null.");
+
+  if (!getVideoID(currentUrl)) {
+    alert("Please navigate to an AP Classroom video.");
+    return false;
+  }
+
+  return true;
 }
 
 async function downloadFile(url: string, filename: string) {
@@ -58,51 +85,40 @@ function getSubtitlesUrl(url: string): string | null {
   }
 }
 
-downloadButton.addEventListener("click", () => {
-  getVideoUrl(async (videoUrl) => {
-    if (videoUrl) {
-      await downloadFile(videoUrl, "video.mp4");
-    } else {
-      alert("No video URL detected yet.");
-    }
+downloadButton.addEventListener("click", async () => {
+  const currentUrl = await getCurrentUrl();
+  if (currentUrl === null) throw new Error("Current tab URL is null.");
+  if (!(await checkIfClassroomTab())) return;
+
+  getVideoUrl(currentUrl).then(async (url) => {
+    if (url === null)
+      throw new Error("URL in getVideoUrl from downloadButton is null.");
+    // TODO: Use name in metadata for file names
+    await downloadFile(url, "video.mp4");
   });
 });
 
 downloadSubtitlesButton.addEventListener("click", async () => {
   const currentUrl = await getCurrentUrl();
-  if (currentUrl === null) {
-    console.log("Could not find current tab URL");
-    return;
-  }
-
-  if (!getVideoID(currentUrl)) {
-    alert("Please navigate to an AP Classroom video.");
-  }
+  if (currentUrl === null) throw new Error("Current tab URL is null.");
+  if (!(await checkIfClassroomTab())) return;
 
   const subtitlesUrl = getSubtitlesUrl(currentUrl);
   if (subtitlesUrl !== null) {
     await downloadFile(subtitlesUrl, "subtitles.vtt");
+  } else if (subtitlesUrl === null) {
+    throw new Error("subtitlesUrl is null.");
   }
 });
 
-openTabButton.addEventListener("click", () => {
-  getVideoUrl((videoUrl) => {
-    if (videoUrl) {
-      chrome.tabs.create({ url: videoUrl });
-    } else {
-      alert("No video URL detected yet.");
-    }
-  });
-});
+openTabButton.addEventListener("click", async () => {
+  const currentUrl = await getCurrentUrl();
+  if (currentUrl === null) throw new Error("Current tab URL is null.");
+  if (!(await checkIfClassroomTab())) return;
 
-toggleButton.addEventListener("click", () => {
-  getMonitoringState((monitoring) => {
-    if (monitoring) {
-      chrome.storage.local.set({ monitoring: false });
-      toggleButton.textContent = "Enable monitoring";
-    } else {
-      chrome.storage.local.set({ monitoring: true });
-      toggleButton.textContent = "Disable monitoring";
-    }
+  getVideoUrl(currentUrl).then(async (url) => {
+    if (url === null)
+      throw new Error("URL in getVideoUrl from openTabButton is null.");
+    chrome.tabs.create({ url: url });
   });
 });
