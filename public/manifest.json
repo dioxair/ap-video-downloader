@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "AP Video Downloader",
-  "version": "1.7.3",
-  "description": "Downloads AP Daily videos",
+  "version": "1.7.5",
+  "description": "Downloads AP Classroom videos",
   "permissions": ["webRequest", "webNavigation", "tabs"],
   "host_permissions": ["https://*.collegeboard.org/*"],
   "action": {
