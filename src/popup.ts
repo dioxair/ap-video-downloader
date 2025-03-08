@@ -121,10 +121,7 @@ class VideoDownloader {
     if (!videoName) throw new Error("Video name is null");
 
     const subtitlesUrl = this.videoService.getSubtitlesUrl(videoID);
-    await this.downloadService.downloadFile(
-      subtitlesUrl,
-      `${videoName} Subtitles.vtt`,
-    );
+    await this.downloadService.downloadFile(subtitlesUrl, `${videoName}.vtt`);
   }
 
   private async handleOpenTab(): Promise<void> {
