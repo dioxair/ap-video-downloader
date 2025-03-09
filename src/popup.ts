@@ -1,9 +1,7 @@
-// sorry to whoever's reading this code for getting carried away and overengineering this whole thing lol
-
 class VideoService {
   constructor(private baseUrl: string) {}
 
-  async getVideoUrl(videoID: string): Promise<string | null> {
+  async getVideoUrl(videoID: string, quality: string): Promise<string | null> {
     const infoUrl = `${this.baseUrl}/embed/medias/${videoID}.json`;
     try {
       const response = await fetch(infoUrl);
@@ -14,10 +12,9 @@ class VideoService {
 
       const data = await response.json();
       const videoAsset = data?.media?.assets?.find(
-        (asset: { type: string }) => asset.type === "original",
+        (asset: { display_name: string }) => asset.display_name === quality,
       );
 
-      // silly replace but its probably ok who cares yk
       return videoAsset ? videoAsset.url.replace("bin", "mp4") : null;
     } catch (error) {
       console.error("Error fetching video URL:", error);
@@ -40,6 +37,40 @@ class VideoService {
       return videoName ? this.sanitizeFilename(videoName) : null;
     } catch (error) {
       console.error("Error fetching video URL:", error);
+      return null;
+    }
+  }
+
+  async getVideoQualities(videoID: string): Promise<string[] | null> {
+    const infoUrl = `${this.baseUrl}/embed/medias/${videoID}.json`;
+    try {
+      const response = await fetch(infoUrl);
+      if (!response.ok) {
+        throw new Error(
+          `Received non-ok status code ${response.status} from ${infoUrl}`,
+        );
+      }
+
+      const data = await response.json();
+      const videoAssets = data?.media?.assets;
+
+      if (!videoAssets) {
+        return null;
+      }
+
+      const videoQualities = videoAssets
+        .filter((asset: { display_name: string }) => {
+          return (
+            asset.display_name.endsWith("p") ||
+            asset.display_name === "Original File"
+          );
+        })
+        .map((asset: { display_name: string }) => asset.display_name)
+        .sort((a: string, b: string) => parseInt(b) - parseInt(a));
+
+      return videoQualities ?? null;
+    } catch (error) {
+      console.error("Error fetching video qualities:", error);
       return null;
     }
   }
@@ -94,6 +125,36 @@ class VideoDownloader {
     this.initEventListeners();
   }
 
+  private async populateVideoQualities(): Promise<void> {
+    const currentUrl = await this.tabService.getCurrentUrl();
+    if (!currentUrl) return;
+
+    const videoID = this.getVideoID(currentUrl);
+    if (!videoID) return;
+
+    const qualities = await this.videoService.getVideoQualities(videoID);
+    const dropdown = document.getElementById(
+      "qualityDropdown",
+    ) as HTMLSelectElement;
+
+    if (qualities && dropdown) {
+      dropdown.innerHTML = "";
+      qualities.forEach((quality) => {
+        const option = document.createElement("option");
+        option.value = quality;
+        option.textContent = quality;
+        dropdown.appendChild(option);
+      });
+    }
+  }
+
+  private getSelectedVideoQuality(): string {
+    const dropdown = document.getElementById(
+      "qualityDropdown",
+    ) as HTMLSelectElement;
+    return dropdown.value;
+  }
+
   private async handleDownloadVideo(): Promise<void> {
     const currentUrl = await this.tabService.getCurrentUrl();
     if (!currentUrl || !this.isValidClassroomTab(currentUrl)) return;
@@ -101,7 +162,10 @@ class VideoDownloader {
     const videoID = this.getVideoID(currentUrl);
     if (!videoID) return;
 
-    const videoUrl = await this.videoService.getVideoUrl(videoID);
+    const videoUrl = await this.videoService.getVideoUrl(
+      videoID,
+      this.getSelectedVideoQuality(),
+    );
     if (!videoUrl) throw new Error("Video URL is null.");
 
     const videoName = await this.videoService.getVideoName(videoID);
@@ -131,7 +195,10 @@ class VideoDownloader {
     const videoID = this.getVideoID(currentUrl);
     if (!videoID) return;
 
-    const videoUrl = await this.videoService.getVideoUrl(videoID);
+    const videoUrl = await this.videoService.getVideoUrl(
+      videoID,
+      this.getSelectedVideoQuality(),
+    );
     if (!videoUrl) throw new Error("Video URL is null.");
 
     chrome.tabs.create({ url: videoUrl });
@@ -160,6 +227,7 @@ class VideoDownloader {
     document
       .getElementById("openVideoInTabButton")
       ?.addEventListener("click", () => this.handleOpenTab());
+    window.addEventListener("load", () => this.populateVideoQualities());
   }
 }
 
