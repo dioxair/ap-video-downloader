@@ -1,8 +1,119 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap");
+
 body {
+  background-color: #151515;
+  color: aliceblue;
+  font-family:
+    Open Sans,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
   display: flex;
-  text-align: center;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #202020;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
   color: aliceblue;
+}
+
+.button-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  margin: 10px 0;
+}
+
+button {
+  font-family:
+    Open Sans,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  background-color: #333;
+  color: aliceblue;
+  border: 1px solid aliceblue;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.3s ease,
+    transform 0.2s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+  background-color: #444;
+  transform: translateY(-2px);
+}
+
+button:active {
+  background-color: #222;
+  transform: translateY(0);
+}
+
+p {
+  margin: 15px 0 5px 0;
+  font-size: 1.1rem;
+}
+
+p:last-of-type {
+  font-size: 0.8rem;
+  margin-top: 30px;
+  color: #aaa;
+}
+
+select {
+  background-color: #333;
+  color: aliceblue;
+  border: 1px solid aliceblue;
+  border-radius: 5px;
+  padding: 8px 10px;
+  font-size: 1rem;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+}
+
+select:focus {
+  outline: none;
+  border-color: aliceblue;
+}
+
+input[type="text"] {
+  background-color: #222;
+  color: aliceblue;
+  border: 1px solid #555;
+  border-radius: 5px;
+  padding: 12px 15px;
+  margin: 10px 0;
+  font-size: 1rem;
+  width: 300px;
+  max-width: 80%;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: aliceblue;
+  box-shadow: 0 0 8px rgba(240, 248, 255, 0.5);
 }
