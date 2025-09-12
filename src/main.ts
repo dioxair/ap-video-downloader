@@ -77,4 +77,30 @@ class VideoService {
     let videoInfo: ApMediaResponse = await response.json();
     return videoInfo;
   }
+
+  async getVideoName(videoUrl: string): Promise<string> {
+    const videoInfo = await this.getVideoInfo(videoUrl);
+    return videoInfo.media.name;
+  }
+
+  async getVideoQualities(videoUrl: string): Promise<string[]> {
+    const videoInfo = await this.getVideoInfo(videoUrl);
+    return videoInfo.media.assets.map(asset => asset.display_name);
+  }
+
+  getSubtitlesUrl(videoID: string): string {
+    return `https://fast.wistia.com/embed/captions/${videoID}.vtt?language=eng`;
+  }
+
+  // regex rules from https://stackoverflow.com/a/31976060
+  sanitizeFilename(filename: string): string {
+    filename = filename
+      .replace(/[<>:"\/\\|?*\x00-\x1F]/g, "")
+      .replace(/[ .]+$/, "");
+    return /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i.test(filename) ||
+      filename === "." ||
+      filename === ".."
+      ? `_invalid_${filename}`
+      : filename;
+  }
 }
