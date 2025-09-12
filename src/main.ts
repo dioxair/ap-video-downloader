@@ -100,14 +100,14 @@ class VideoService {
   }
 
   // regex rules from https://stackoverflow.com/a/31976060
-  sanitizeFilename(filename: string): string {
-    filename = filename
+  sanitizeFilename(fileName: string): string {
+    fileName = fileName
       .replace(/[<>:"\/\\|?*\x00-\x1F]/g, "")
       .replace(/[ .]+$/, "");
-    return /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i.test(filename) ||
-      filename === "." ||
-      filename === ".."
-      ? `_invalid_${filename}`
-      : filename;
+    return /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i.test(fileName) ||
+      fileName === "." ||
+      fileName === ".."
+      ? `_invalid_${fileName}`
+      : fileName;
   }
 }
