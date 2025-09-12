@@ -111,3 +111,40 @@ class VideoService {
       : fileName;
   }
 }
+
+class VideoDownloader {
+  constructor(videoService: VideoService) {
+    this.initEventListeners();
+  }
+
+  private handleDownloadVideo() {}
+  private handleDownloadSubtitles() {}
+  private handleOpenTab() {}
+  private populateVideoQualities() {}
+
+  private getVideoID(url: string): string | null {
+    return new URLSearchParams(new URL(url).search).get("apd");
+  }
+
+  private isValidVideoLink(url: string): boolean {
+    const videoID = this.getVideoID(url);
+    if (!videoID) {
+      alert("Please input a link to an AP Classroom video.");
+      return false;
+    }
+    return true;
+  }
+
+  private initEventListeners(): void {
+    document
+      .getElementById("downloadVideoButton")
+      ?.addEventListener("click", () => this.handleDownloadVideo());
+    document
+      .getElementById("downloadSubsButton")
+      ?.addEventListener("click", () => this.handleDownloadSubtitles());
+    document
+      .getElementById("openVideoInTabButton")
+      ?.addEventListener("click", () => this.handleOpenTab());
+    window.addEventListener("load", () => this.populateVideoQualities());
+  }
+}
