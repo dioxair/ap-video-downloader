@@ -65,27 +65,34 @@ interface ApMediaResponse {
 }
 
 class VideoService {
-  async getVideoInfo(videoUrl: string): Promise<ApMediaResponse> {
-    const response = await fetch(videoUrl);
+  async getVideoInfo(videoUrl: string): Promise<ApMediaResponse | null> {
+    try {
+      const response = await fetch(videoUrl);
 
-    if (!response.ok) {
-      throw Error(
-        `HTTP error making GET request to ${videoUrl}. Status code ${response.status} ${response.statusText}.`
-      );
+      if (!response.ok) {
+        throw Error(
+          `HTTP error making GET request to ${videoUrl}. Status code ${response.status} ${response.statusText}.`
+        );
+      }
+
+      let videoInfo: ApMediaResponse = await response.json();
+      return videoInfo;
+    } catch (err) {
+      console.error("Error fetching video URL:", err);
+      return null;
     }
-
-    let videoInfo: ApMediaResponse = await response.json();
-    return videoInfo;
   }
 
-  async getVideoName(videoUrl: string): Promise<string> {
+  async getVideoName(videoUrl: string): Promise<string | null> {
     const videoInfo = await this.getVideoInfo(videoUrl);
-    return videoInfo.media.name;
+    return videoInfo ? this.sanitizeFilename(videoInfo.media.name) : null;
   }
 
-  async getVideoQualities(videoUrl: string): Promise<string[]> {
+  async getVideoQualities(videoUrl: string): Promise<string[] | null> {
     const videoInfo = await this.getVideoInfo(videoUrl);
-    return videoInfo.media.assets.map(asset => asset.display_name);
+    return videoInfo
+      ? videoInfo.media.assets.map((asset) => asset.display_name)
+      : null;
   }
 
   getSubtitlesUrl(videoID: string): string {
