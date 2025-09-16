@@ -9,7 +9,10 @@ export class VideoDownloader {
   private handleDownloadSubtitles() {}
   private async handleOpenTab() {
     const url: string = this.getInputText();
-    if (!this.isValidVideoLink(url)) return;
+    if (!this.isValidVideoLink(url)) {
+      alert("Please input a link to an AP Classroom video.");
+      return;
+    }
 
     const videoID = this.getVideoID(url);
     if (!videoID) return;
@@ -19,7 +22,35 @@ export class VideoDownloader {
 
     window.open(videoInfo.media.assets[0].url);
   }
-  private populateVideoQualities() {}
+  // FIXME: implement debouncing so that this doesn't spam requests
+  private async populateVideoQualities() {
+    const dropdown = document.getElementById(
+      "qualityDropdown"
+    ) as HTMLSelectElement;
+
+    const url: string = this.getInputText();
+    if (!this.isValidVideoLink(url)) {
+      dropdown.length = 0;
+      return;
+    }
+
+    const videoID = this.getVideoID(url);
+    if (!videoID) {
+      dropdown.length = 0;
+      return;
+    }
+
+    const qualities = await this.videoService.getVideoQualities(videoID);
+    if (qualities && dropdown) {
+      dropdown.innerHTML = "";
+      qualities.forEach((quality) => {
+        const option = document.createElement("option");
+        option.value = quality;
+        option.textContent = quality;
+        dropdown.appendChild(option);
+      });
+    }
+  }
 
   private getVideoID(url: string): string | null {
     return new URLSearchParams(new URL(url).search).get("apd");
@@ -29,15 +60,14 @@ export class VideoDownloader {
     try {
       new URL(url);
     } catch (_) {
-      alert("Please input a link to an AP Classroom video.");
       return false;
     }
 
     const videoID = this.getVideoID(url);
     if (!videoID) {
-      alert("Please input a link to an AP Classroom video.");
       return false;
     }
+
     return true;
   }
 
@@ -59,6 +89,8 @@ export class VideoDownloader {
     document
       .getElementById("openVideoInTabButton")
       ?.addEventListener("click", () => this.handleOpenTab());
-    window.addEventListener("load", () => this.populateVideoQualities());
+    document
+      .getElementById("videoInput")
+      ?.addEventListener("input", () => this.populateVideoQualities());
   }
 }

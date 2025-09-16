@@ -27,9 +27,19 @@ export class VideoService {
 
   async getVideoQualities(videoID: string): Promise<string[] | null> {
     const videoInfo = await this.getVideoInfo(videoID);
-    return videoInfo
-      ? videoInfo.media.assets.map((asset) => asset.display_name)
-      : null;
+    if (!videoInfo) return null;
+
+    const videoQualities = videoInfo.media.assets
+      .filter((asset: { display_name: string }) => {
+        return (
+          asset.display_name.endsWith("p") ||
+          asset.display_name === "Original File"
+        );
+      })
+      .map((asset: { display_name: string }) => asset.display_name)
+      .sort((a: string, b: string) => parseInt(b) - parseInt(a));
+
+    return videoQualities;
   }
 
   getSubtitlesUrl(videoID: string): string {
