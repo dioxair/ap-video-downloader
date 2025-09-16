@@ -65,17 +65,18 @@ interface ApMediaResponse {
 }
 
 class VideoService {
-  async getVideoInfo(videoUrl: string): Promise<ApMediaResponse | null> {
+  async getVideoInfo(videoID: string): Promise<ApMediaResponse | null> {
+    const infoUrl = `https://fast.wistia.com/embed/medias/${videoID}.json`;
     try {
-      const response = await fetch(videoUrl);
+      const response = await fetch(infoUrl);
 
       if (!response.ok) {
         throw Error(
-          `HTTP error making GET request to ${videoUrl}. Status code ${response.status} ${response.statusText}.`
+          `HTTP error making GET request to ${infoUrl}. Status code ${response.status} ${response.statusText}.`
         );
       }
 
-      let videoInfo: ApMediaResponse = await response.json();
+      const videoInfo: ApMediaResponse = await response.json();
       return videoInfo;
     } catch (err) {
       console.error("Error fetching video URL:", err);
@@ -83,13 +84,13 @@ class VideoService {
     }
   }
 
-  async getVideoName(videoUrl: string): Promise<string | null> {
-    const videoInfo = await this.getVideoInfo(videoUrl);
+  async getVideoName(videoID: string): Promise<string | null> {
+    const videoInfo = await this.getVideoInfo(videoID);
     return videoInfo ? this.sanitizeFilename(videoInfo.media.name) : null;
   }
 
-  async getVideoQualities(videoUrl: string): Promise<string[] | null> {
-    const videoInfo = await this.getVideoInfo(videoUrl);
+  async getVideoQualities(videoID: string): Promise<string[] | null> {
+    const videoInfo = await this.getVideoInfo(videoID);
     return videoInfo
       ? videoInfo.media.assets.map((asset) => asset.display_name)
       : null;
@@ -113,13 +114,24 @@ class VideoService {
 }
 
 class VideoDownloader {
-  constructor(videoService: VideoService) {
+  constructor(private videoService: VideoService) {
     this.initEventListeners();
   }
 
   private handleDownloadVideo() {}
   private handleDownloadSubtitles() {}
-  private handleOpenTab() {}
+  private async handleOpenTab() {
+    const url: string = this.getInputText();
+    if (!this.isValidVideoLink(url)) return;
+
+    const videoID = this.getVideoID(url);
+    if (!videoID) return;
+
+    const videoInfo = await this.videoService.getVideoInfo(videoID);
+    if (!videoInfo) return;
+
+    window.open(videoInfo.media.assets[0].url);
+  }
   private populateVideoQualities() {}
 
   private getVideoID(url: string): string | null {
@@ -127,12 +139,27 @@ class VideoDownloader {
   }
 
   private isValidVideoLink(url: string): boolean {
+    try {
+      new URL(url);
+    } catch (_) {
+      alert("Please input a link to an AP Classroom video.");
+      return false;
+    }
+
     const videoID = this.getVideoID(url);
     if (!videoID) {
       alert("Please input a link to an AP Classroom video.");
       return false;
     }
     return true;
+  }
+
+  private getInputText(): string {
+    const inputElement = document.getElementById(
+      "videoInput"
+    ) as HTMLInputElement;
+
+    return inputElement.value;
   }
 
   private initEventListeners(): void {
@@ -148,3 +175,5 @@ class VideoDownloader {
     window.addEventListener("load", () => this.populateVideoQualities());
   }
 }
+const videoService = new VideoService();
+new VideoDownloader(videoService);
