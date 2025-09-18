@@ -42,6 +42,17 @@ export class VideoService {
     return videoQualities;
   }
 
+  async getVideoURL(videoID: string, quality: string): Promise<string | null> {
+    const videoInfo = await this.getVideoInfo(videoID);
+    if (!videoInfo) return null;
+
+    const video = videoInfo.media.assets.find(
+      (asset: { display_name: string }) => asset.display_name === quality
+    );
+
+    return video ? video.url.replace("bin", "mp4") : null;
+  }
+
   getSubtitlesUrl(videoID: string): string {
     return `https://fast.wistia.com/embed/captions/${videoID}.vtt?language=eng`;
   }
