@@ -74,14 +74,16 @@ export class VideoDownloader {
       alert("Please input a link to an AP Classroom video.");
       return;
     }
-
     const videoID = this.getVideoID(url);
     if (!videoID) return;
 
-    const videoInfo = await this.videoService.getVideoInfo(videoID);
-    if (!videoInfo) return;
+    const videoURL = await this.videoService.getVideoURL(
+      videoID,
+      this.getSelectedVideoQuality(),
+    );
+    if (!videoURL) return;
 
-    window.open(videoInfo.media.assets[0].url);
+    window.open(videoURL);
   }
   // FIXME: implement debouncing so that this doesn't spam requests
   private async populateVideoQualities() {
